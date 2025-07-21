@@ -1,0 +1,231 @@
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua"))()
+
+-- Notifikasi
+local function Notify(title, message, image)
+	Rayfield:Notify({
+		Title = title,
+		Content = "━━━━━━━━━━━━━━━━━━\n" .. message .. "\n━━━━━━━━━━━━━━━━━━",
+		Duration = 3,
+		Image = image
+	})
+end
+
+local function NotifySuccess(t, m) Notify(t, m, "circle-check") end
+local function NotifyError(t, m) Notify(t, m, "ban") end
+local function NotifyInfo(t, m) Notify(t, m, "info") end
+local function NotifyWarning(t, m) Notify(t, m, "triangle-alert") end
+
+-- Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
+
+-- Anti-AFK
+LocalPlayer.Idled:Connect(function()
+	VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+	task.wait(1)
+	VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+end)
+
+-- Remote setup
+local net = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_net@0.2.0"):WaitForChild("net")
+local rodRemote = net:WaitForChild("RF/ChargeFishingRod")
+local miniGameRemote = net:WaitForChild("RF/RequestFishingMinigameStarted")
+local finishRemote = net:WaitForChild("RE/FishingCompleted")
+
+-- States
+local autofish = false
+local perfectCast = true
+local ijump = false
+
+-- GUI Window
+local Window = Rayfield:CreateWindow({
+	Name = "PinkyBoy | 🦈 Fish It Script",
+	LoadingTitle = "Fish It Script Beta 1.0",
+	LoadingSubtitle = "by Sena",
+	Theme = "Amethyst",
+	ConfigurationSaving = { Enabled = false },
+	KeySystem = false
+})
+
+-- Developer Info
+NotifyWarning("Warning!", "Please read the guide if you're confused using the features.")
+local DevTab = Window:CreateTab("👨‍💻 Developer", "airplay")
+
+DevTab:CreateParagraph({
+	Title = "📌 PinkyBoy Developer Info",
+	Content = [[
+🎣 Fish It Script by Sena
+
+Terima kasih telah menggunakan script ini!
+Script ini dibuat khusus untuk game "Fish It".
+
+────────────────────────
+
+📦 Fitur yang tersedia:
+• 🎯 Auto Fish (otomatis mancing)
+• ✅ Perfect Cast Toggle
+• 🧍 Infinity Jump & Speed Control
+• 🗺️ Teleport ke pulau
+• 🔕 Anti-AFK System
+• 🔧 Tanpa login key & siap pakai
+
+────────────────────────
+
+👤 Developer Kontak:
+• Channel YouTube : youtube.com/@thisisnamael
+• Instagram      : @haryaseriansyah
+• GitHub         : github.com/haryasenahendriansyah
+
+────────────────────────
+
+💡 Tips:
+• Aktifkan Perfect Cast untuk hasil terbaik
+• Script ini otomatis instant catch, tidak butuh delay
+• Update terbaru akan diumumkan di YouTube 
+
+────────────────────────
+
+🙏 Support kami dengan follow dan share:
+Terima kasih & selamat bermain!
+]]
+})
+
+DevTab:CreateButton({ Name = "Channel YouTube", Callback = function() setclipboard("https://youtube.com/@thisisnamael") NotifyInfo("Link Discord", "Copied.") end })
+DevTab:CreateButton({ Name = "Instagram", Callback = function() setclipboard("https://instagram.com/haryaseriansyah") NotifyInfo("Link Instagram", "Copied.") end })
+DevTab:CreateButton({ Name = "GitHub", Callback = function() setclipboard("https://github.com/haryasenahendriansyah") NotifyInfo("Link GitHub", "Copied.") end })
+
+-- Auto Fish Tab
+local MainTab = Window:CreateTab("🎣 Auto Fish", "fish")
+MainTab:CreateSection("🎯 AUTO FISHING")
+
+MainTab:CreateToggle({
+	Name = "Enable Auto Fish (Instant Catch)",
+	CurrentValue = false,
+	Flag = "AutoFishToggle",
+	Callback = function(value)
+		autofish = value
+		if value then
+			task.spawn(function()
+				while autofish do
+					pcall(function()
+						local equipRemote = net:WaitForChild("RE/EquipToolFromHotbar")
+						equipRemote:FireServer(1)
+						task.wait(0.1)
+
+						local timestamp = perfectCast and 9999999999 or (tick() + math.random())
+						rodRemote:InvokeServer(timestamp)
+						task.wait(0.2)
+
+						local x, y = -1.238, 0.969
+						if not perfectCast then
+							x = math.random(-1000, 1000) / 1000
+							y = math.random(0, 1000) / 1000
+						else
+							x = x + math.random(-5, 5) / 1000
+							y = y + math.random(-5, 5) / 1000
+						end
+
+						miniGameRemote:InvokeServer(x, y)
+						task.wait(0.2) -- Instant catch
+						finishRemote:FireServer()
+					end)
+					task.wait(0.25)
+				end
+			end)
+		end
+	end
+})
+
+MainTab:CreateToggle({
+	Name = "Use Perfect Cast",
+	CurrentValue = true,
+	Flag = "PerfectCast",
+	Callback = function(val) perfectCast = val end
+})
+
+-- Player Tab
+local PlayerTab = Window:CreateTab("🧍 Player", "users-round")
+PlayerTab:CreateSection("👣 MOVEMENT")
+
+PlayerTab:CreateToggle({
+	Name = "Infinity Jump",
+	CurrentValue = false,
+	Flag = "InfinityJump",
+	Callback = function(val) ijump = val end
+})
+
+game:GetService("UserInputService").JumpRequest:Connect(function()
+	if ijump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+		LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+	end
+end)
+
+PlayerTab:CreateSlider({
+	Name = "WalkSpeed",
+	Range = {16, 150},
+	Increment = 1,
+	Suffix = "Speed",
+	CurrentValue = 16,
+	Flag = "WalkSpeed",
+	Callback = function(val)
+		local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if hum then hum.WalkSpeed = val end
+	end
+})
+
+PlayerTab:CreateSlider({
+	Name = "Jump Power",
+	Range = {50, 500},
+	Increment = 10,
+	Suffix = "JP",
+	CurrentValue = 35,
+	Flag = "JumpPower",
+	Callback = function(val)
+		local char = LocalPlayer.Character
+		if char then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				hum.UseJumpPower = true
+				hum.JumpPower = val
+			end
+		end
+	end
+})
+
+-- Teleport Tab
+local IslandsTab = Window:CreateTab("🗺️ Islands", "map")
+local islandCoords = {
+	["01"] = { name = "Weather Machine", position = Vector3.new(-1471, -3, 1929) },
+	["02"] = { name = "Esoteric Depths", position = Vector3.new(3157, -1303, 1439) },
+	["03"] = { name = "Tropical Grove", position = Vector3.new(-2038, 3, 3650) },
+	["04"] = { name = "Stingray Shores", position = Vector3.new(-32, 4, 2773) },
+	["05"] = { name = "Kohana Volcano", position = Vector3.new(-519, 24, 189) },
+	["06"] = { name = "Coral Reefs", position = Vector3.new(-3095, 1, 2177) },
+	["07"] = { name = "Crater Island", position = Vector3.new(968, 1, 4854) },
+	["08"] = { name = "Kohana", position = Vector3.new(-658, 3, 719) },
+	["09"] = { name = "Winter Fest", position = Vector3.new(1611, 4, 3280) },
+	["10"] = { name = "Isoteric Island", position = Vector3.new(1987, 4, 1400) }
+}
+
+for _, data in pairs(islandCoords) do
+	IslandsTab:CreateButton({
+		Name = data.name,
+		Callback = function()
+			local success, err = pcall(function()
+				local charFolder = workspace:WaitForChild("Characters", 5)
+				local char = charFolder:FindFirstChild(LocalPlayer.Name)
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				if not hrp then error("HumanoidRootPart not found") end
+				hrp.CFrame = CFrame.new(data.position + Vector3.new(0, 5, 0))
+			end)
+
+			if success then
+				NotifySuccess("Teleported!", "You are now at " .. data.name)
+			else
+				NotifyError("Teleport Failed", tostring(err))
+			end
+		end
+	})
+end
